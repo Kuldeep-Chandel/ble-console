@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BLE Console</title>
+    <meta name="description" content="Browser-based BLE GATT terminal — send ASCII/HEX commands, monitor notifications, and stream files to ESP32 and other BLE devices." />
+    <meta property="og:title" content="BLE Console — Embedded Knowledge" />
+    <meta property="og:description" content="Web Bluetooth GATT terminal for ESP32 and BLE devices. No install needed." />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0A0C10" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2312151B'/%3E%3Ccircle cx='12' cy='12' r='2.1' fill='%235C7CFF'/%3E%3Cpath d='M8.3 8.3a5.2 5.2 0 0 1 7.4 0M5.6 5.6a9.2 9.2 0 0 1 12.8 0' stroke='%235C7CFF' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
+    <style>
+        :root {
+            /* Surfaces */
+            --bg: #0A0C10;
+            --surface: #12151B;
+            --surface-raised: #171B23;
+            --surface-hover: #1C202A;
+            --border: #1E2530;
+            --border-strong: #313A48;
+
+            /* Text */
+            --text: #EDEFF2;
+            --text-secondary: #9AA3B2;
+            --text-tertiary: #7A8494;
+
+            /* Accent */
+            --accent: #3358E8;
+            --accent-hover: #4A6EF0;
+            --accent-tint: rgba(51, 88, 232, 0.14);
+
+            /* Semantic */
+            --success: #2FAE68;
+            --success-tint: rgba(47, 174, 104, 0.14);
+            --warning: #E0A22E;
+            --warning-tint: rgba(224, 162, 46, 0.14);
+            --danger: #E1444B;
+            --danger-tint: rgba(225, 68, 75, 0.14);
+
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-pill: 999px;
+
+            /* Shadow */
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.34);
+
+            /* Spacing (8px base) */
+            --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+            --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+
+            /* Type */
+            --font-ui: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-image: radial-gradient(1100px 560px at 50% -12%, rgba(51, 88, 232, 0.07), transparent 60%);
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: 14px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+
+        button { font-family: inherit; }
+
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+
+        /* ---------- Shared inputs ---------- */
+        input[type="text"], select {
+            font-family: var(--font-mono);
+            color: var(--text);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        input[type="text"]:hover, select:hover { border-color: var(--border-strong); }
+        input[type="text"]:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+        input[type="text"]:disabled, select:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ---------- Buttons ---------- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+            height: 38px; padding: 0 var(--space-4);
+            font-size: 13px; font-weight: 600;
+            border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+            background: var(--surface-raised); color: var(--text);
+            cursor: pointer; white-space: nowrap;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
+        }
+        .btn svg { width: 16px; height: 16px; flex: none; }
+        .btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+        .btn:active:not(:disabled) { transform: translateY(0.5px); }
+        .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+        .btn-danger-outline { color: var(--danger); border-color: rgba(225, 68, 75, 0.35); background: transparent; }
+        .btn-danger-outline:hover:not(:disabled) { background: var(--danger-tint); border-color: var(--danger); }
+
+        .btn-ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+
+        .btn-block { width: 100%; }
+        .btn-icon { width: 38px; padding: 0; }
+        .btn-sm { height: 26px; padding: 0 var(--space-2); font-size: 11.5px; }
+        .btn-sm.btn-icon { width: 26px; padding: 0; }
+        .btn-sm svg { width: 14px; height: 14px; }
+        .btn-ghost.is-active { background: var(--accent-tint); color: var(--accent-hover); }
+
+        .btn.is-loading svg { display: none; }
+        .btn-spinner {
+            display: none; width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff;
+            animation: spin .7s linear infinite;
+        }
+        .btn.is-loading .btn-spinner { display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- App shell ---------- */
+        .app { height: 100vh; display: flex; flex-direction: column; }
+        .app-body { flex: 1; display: flex; min-height: 0; }
+
+        .app-header {
+            height: 56px; flex: none; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface);
+        }
+        .brand { display: flex; align-items: center; gap: var(--space-3); }
+        .brand-mark {
+            width: 28px; height: 28px; border-radius: 8px; background: var(--surface-raised);
+            border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center;
+            color: var(--accent-hover); flex: none;
+        }
+        .brand-mark svg { width: 16px; height: 16px; }
+        .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+        .brand-name { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; }
+        .brand-sub { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+
+        .user-chip {
+            display: inline-flex; align-items: center; gap: var(--space-2); height: 32px;
+            padding: 0 var(--space-3) 0 4px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+            background: var(--surface-raised); box-shadow: 0 0 0 3px var(--accent-tint);
+        }
+        .user-avatar {
+            width: 24px; height: 24px; border-radius: 50%; flex: none;
+            background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chip-icon {
+            width: 24px; height: 24px; border-radius: 50%; flex: none;
+            background: var(--accent-tint); border: 1px solid var(--border-strong);
+            color: var(--accent-hover);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chip-icon svg { width: 14px; height: 14px; }
+        .header-name { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+
+        .status-pill {
+            display: inline-flex; align-items: center; gap: var(--space-2); height: 30px;
+            padding: 0 var(--space-3) 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+            background: var(--surface-raised); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-tertiary); flex: none; }
+        .dot--connecting { background: var(--warning); animation: pulse 1.1s ease-in-out infinite; }
+        .dot--online { background: var(--success); box-shadow: 0 0 0 3px var(--success-tint); }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+        .status-label--offline { color: var(--text-tertiary); }
+        .status-label--connecting { color: var(--warning); }
+        .status-label--online { color: var(--success); }
+
+        /* ---------- Rail ---------- */
+        .rail {
+            width: 336px; flex: none; background: var(--surface); border-right: 1px solid var(--border);
+            padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); overflow-y: auto;
+        }
+        .rail-section { display: flex; flex-direction: column; gap: var(--space-4); }
+        .rail-section + .rail-section { padding-top: var(--space-6); border-top: 1px solid var(--border); }
+        .rail-title { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); }
+        .rail-title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+        .rail-title-tools { display: flex; align-items: center; gap: 2px; }
+
+        .field { display: flex; flex-direction: column; gap: var(--space-2); }
+        .field label, .field .field-label { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--text-tertiary); }
+        .field input[type="text"] { height: 38px; padding: 0 var(--space-3); font-size: 12.5px; width: 100%; }
+        .field-hint { font-size: 11px; color: var(--text-tertiary); }
+
+        .btn-row { display: flex; flex-direction: column; gap: var(--space-2); }
+
+        /* ---------- Quick commands ---------- */
+        .qc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+        .qc-btn {
+            position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+            min-width: 0; padding: 8px 10px; text-align: left;
+            border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+            background: var(--surface-raised); color: var(--text); cursor: pointer;
+            transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+        }
+        .qc-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--accent); }
+        .qc-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .qc-btn.is-sent { background: var(--accent-tint); border-color: var(--accent); }
+        .qc-label {
+            max-width: calc(100% - 18px); font-size: 12.5px; font-weight: 600;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .qc-payload {
+            max-width: 100%; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .qc-key {
+            position: absolute; top: 7px; right: 8px; font-family: var(--font-mono);
+            font-size: 9.5px; font-weight: 600; color: var(--text-tertiary);
+        }
+        .qc-fmt {
+            display: inline-block; margin-right: 4px; padding: 0 3px; border-radius: 3px;
+            background: var(--warning-tint); color: var(--warning); font-size: 9px; font-weight: 700;
+        }
+        .qc-grid.is-editing .qc-btn { border-style: dashed; }
+        .qc-grid.is-editing .qc-btn:hover { border-color: var(--warning); }
+        .qc-empty {
+            grid-column: 1 / -1; padding: var(--space-4); text-align: center; font-size: 12px;
+            color: var(--text-tertiary); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+        }
+
+        .dropzone {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+            padding: var(--space-6) var(--space-4); border: 1px dashed var(--border-strong); border-radius: var(--radius-md);
+            background: var(--surface); cursor: pointer; text-align: center;
+            transition: border-color .15s ease, background-color .15s ease;
+        }
+        .dropzone:hover, .dropzone.is-dragover { border-color: var(--accent); background: var(--accent-tint); }
+        .dropzone:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .dropzone svg { color: var(--text-tertiary); width: 22px; height: 22px; }
+        .dropzone .file-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+        .dropzone .file-meta { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; min-height: 14px; }
+        .file-input-hidden {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+
+        .transfer-progress { display: flex; flex-direction: column; gap: var(--space-2); }
+        .progress-track { height: 4px; border-radius: var(--radius-pill); background: var(--border); overflow: hidden; }
+        .progress-bar { height: 100%; width: 0%; background: var(--accent); border-radius: inherit; transition: width .25s ease; }
+        .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+        .rail::-webkit-scrollbar { width: 8px; }
+        .rail::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+        .rail::-webkit-scrollbar-track { background: transparent; }
+
+        /* ---------- Workspace ---------- */
+        .workspace { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .console-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+        .console-header {
+            display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+            padding: var(--space-4) var(--space-6); border-bottom: 1px solid var(--border); min-width: 0;
+        }
+        .console-header h2 { margin: 0; font-size: 14px; font-weight: 700; }
+        .entry-count { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+        .console-tools { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; min-width: 0; }
+
+        .search-field { position: relative; }
+        .search-field svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); width: 14px; height: 14px; }
+        .search-field input[type="text"] { height: 32px; padding: 0 var(--space-2) 0 30px; font-size: 12.5px; width: 180px; }
+
+        .segmented { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
+        .segmented-btn {
+            padding: 0 10px; height: 32px; font-size: 11.5px; font-weight: 600;
+            background: var(--surface-raised); color: var(--text-secondary); border: none; border-right: 1px solid var(--border);
+            cursor: pointer; transition: background-color .15s ease, color .15s ease;
+        }
+        .segmented-btn:last-child { border-right: none; }
+        .segmented-btn.is-active { background: var(--accent-tint); color: var(--accent-hover); }
+        .segmented-btn:hover:not(.is-active) { background: var(--surface-hover); }
+
+        .console-scroll {
+            flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-6);
+            font-family: var(--font-mono); font-size: 12.5px; line-height: 1.75;
+        }
+        .console-scroll::-webkit-scrollbar { width: 8px; }
+        .console-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+        .console-scroll::-webkit-scrollbar-track { background: transparent; }
+
+        .log-row { display: flex; align-items: baseline; gap: var(--space-3); padding: 3px 0; animation: fadeIn .25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+        .log-time { color: var(--text-tertiary); min-width: 64px; flex: none; font-variant-numeric: tabular-nums; }
+        .log-badge {
+            flex: none; display: inline-flex; align-items: center; justify-content: center;
+            min-width: 30px; height: 18px; padding: 0 6px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .03em;
+        }
+        .log-badge--in { background: rgba(96, 165, 250, .14); color: #7CB0FF; }
+        .log-badge--out { background: var(--success-tint); color: #4FCB8B; }
+        .log-badge--sys { background: var(--surface-hover); color: var(--text-tertiary); }
+        .log-text { color: var(--text); min-width: 0; word-break: break-word; white-space: pre-wrap; }
+        .log-row[data-type="sys"] .log-text { color: var(--text-secondary); }
+
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+            height: 100%; min-height: 260px; color: var(--text-tertiary); text-align: center;
+        }
+        .empty-state svg { width: 30px; height: 30px; opacity: .5; margin-bottom: var(--space-2); }
+        .empty-state strong { display: block; color: var(--text-secondary); font-family: var(--font-ui); font-size: 13px; font-weight: 600; }
+        .empty-state p { margin: 0; font-family: var(--font-ui); font-size: 12.5px; max-width: 280px; }
+
+        .composer {
+            display: flex; gap: var(--space-3); align-items: center;
+            padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border); background: var(--surface);
+        }
+        .composer input[type="text"] { flex: 1; min-width: 0; height: 42px; padding: 0 var(--space-4); background: var(--bg); font-size: 13px; }
+        .composer select { height: 42px; padding: 0 var(--space-2); font-size: 12px; background: var(--bg); cursor: pointer; }
+        .composer .btn { height: 42px; }
+
+        /* ---------- Dialog ---------- */
+        dialog {
+            width: min(420px, calc(100vw - 32px)); padding: 0;
+            background: var(--surface-raised); color: var(--text);
+            border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+        }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+        .dlg-head { padding: var(--space-5) var(--space-6) 0; }
+        .dlg-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+        .dlg-body { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5) var(--space-6); }
+        .dlg-body input[type="text"] { background: var(--bg); }
+        .dlg-error { min-height: 16px; font-size: 11.5px; color: var(--danger); }
+        .dlg-foot {
+            display: flex; align-items: center; gap: var(--space-2);
+            padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);
+        }
+        .dlg-foot .spacer { flex: 1; }
+
+        /* ---------- Toasts ---------- */
+        .toast-host { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: 320px; }
+        .toast {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: var(--surface-raised); border: 1px solid var(--border-strong); border-left: 3px solid var(--text-tertiary);
+            border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12.5px; color: var(--text);
+            box-shadow: var(--shadow-md); opacity: 0; transform: translateY(-6px);
+            transition: opacity .2s ease, transform .2s ease;
+        }
+        .toast.is-visible { opacity: 1; transform: translateY(0); }
+        .toast span { flex: 1; }
+        .toast--success { border-left-color: var(--success); }
+        .toast--warning { border-left-color: var(--warning); }
+        .toast--error { border-left-color: var(--danger); }
+        .toast--info { border-left-color: var(--accent); }
+        .toast-close { flex: none; background: none; border: none; padding: 0; color: var(--text-tertiary); cursor: pointer; }
+        .toast-close svg { width: 14px; height: 14px; display: block; }
+        .toast-close:hover { color: var(--text); }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 960px) {
+            body { overflow: auto; }
+            .app { height: auto; min-height: 100vh; }
+            .app-body { flex-direction: column; }
+            .rail {
+                width: 100%; flex-direction: row; flex-wrap: wrap; gap: var(--space-6);
+                border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible;
+            }
+            .rail-section { flex: 1 1 300px; }
+            .rail-section + .rail-section { padding-top: 0; border-top: none; }
+            .console-scroll { min-height: 360px; }
+        }
+
+        @media (max-width: 640px) {
+            .app-header { padding: 0 var(--space-4); }
+            .brand-sub { display: none; }
+            .user-chip { display: none; }
+            .rail { flex-direction: column; padding: var(--space-4); }
+            .console-header { padding: var(--space-4); row-gap: var(--space-2); }
+            .console-tools { width: 100%; }
+            .search-field { flex: 1; }
+            .search-field input[type="text"] { width: 100%; }
+            .console-scroll { padding: var(--space-3) var(--space-4); }
+            .composer { padding: var(--space-3) var(--space-4); flex-wrap: wrap; }
+            .composer input[type="text"] { flex-basis: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <header class="app-header">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                        <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+                        <path d="M8.3 8.3a5.2 5.2 0 0 1 7.4 0"/>
+                        <path d="M5.6 5.6a9.2 9.2 0 0 1 12.8 0"/>
+                    </svg>
+                </span>
+                <div class="brand-text">
+                    <span class="brand-name">BLE Console</span>
+                    <span class="brand-sub">GATT Terminal</span>
+                </div>
+            </div>
+            <span class="user-chip">
+                <span class="chip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="7" y="7" width="10" height="10" rx="1.5"/>
+                        <path d="M9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"/>
+                    </svg>
+                </span>
+                <span class="user-avatar" aria-hidden="true">E-K</span>
+                <span class="header-name">EMBEDDED KNOWLEDGE</span>
+            </span>
+            <span class="status-pill">
+                <span class="dot dot--offline" id="dot" aria-hidden="true"></span>
+                <span id="statusLabel" class="status-label--offline">OFFLINE</span>
+            </span>
+        </header>
+
+        <div class="app-body">
+            <aside class="rail">
+                <section class="rail-section">
+                    <h2 class="rail-title">Connection</h2>
+
+                    <div class="field">
+                        <label for="svc">Service UUID</label>
+                        <input type="text" id="svc" value="000000ff-0000-1000-8000-00805f9b34fb" />
+                    </div>
+                    <div class="field">
+                        <label for="chr">Characteristic UUID</label>
+                        <input type="text" id="chr" value="0000ff01-0000-1000-8000-00805f9b34fb" />
+                    </div>
+
+                    <div class="btn-row">
+                        <button id="btnConnect" class="btn btn-primary btn-block">
+                            <span class="btn-spinner" aria-hidden="true"></span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.5 19.5"/></svg>
+                            <span id="btnConnectLabel">Establish Link</span>
+                        </button>
+                        <button id="btnDisconnect" class="btn btn-block" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
+                            Terminate
+                        </button>
+                    </div>
+                </section>
+
+                <section class="rail-section">
+                    <div class="rail-title-row">
+                        <h2 class="rail-title">Quick Commands</h2>
+                        <div class="rail-title-tools">
+                            <button id="btnQcImport" class="btn btn-ghost btn-sm btn-icon" title="Import commands (JSON)" aria-label="Import commands">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M12 16l-4-4M12 16l4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                            </button>
+                            <button id="btnQcExport" class="btn btn-ghost btn-sm btn-icon" title="Export commands (JSON)" aria-label="Export commands">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                            </button>
+                            <button id="btnQcEdit" class="btn btn-ghost btn-sm" aria-pressed="false">Edit</button>
+                            <button id="btnQcAdd" class="btn btn-ghost btn-sm btn-icon" title="Add command" aria-label="Add command">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            </button>
+                            <input type="file" id="qcImportIn" class="file-input-hidden" accept="application/json,.json" />
+                        </div>
+                    </div>
+                    <div class="qc-grid" id="qcGrid"></div>
+                    <span class="field-hint" id="qcHint">Alt + 1…9 sends the first nine commands.</span>
+                </section>
+
+                <section class="rail-section">
+                    <h2 class="rail-title">File Transfer</h2>
+
+                    <label class="dropzone" id="dropzone" for="fileIn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/></svg>
+                        <span class="file-name" id="fileName">Drop a file or click to browse</span>
+                        <span class="file-meta" id="fileMeta"></span>
+                        <input type="file" id="fileIn" class="file-input-hidden" />
+                    </label>
+
+                    <div class="field">
+                        <label for="chunkSz">Chunk size (bytes)</label>
+                        <input type="text" id="chunkSz" value="20" inputmode="numeric" autocomplete="off" />
+                        <span class="field-hint">20 always works. Use MTU − 3 (e.g. 244) if your device negotiates a larger MTU.</span>
+                    </div>
+
+                    <div class="btn-row" style="flex-direction: row; gap: 8px;">
+                        <button id="btnUpload" class="btn" style="flex:1" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                            Upload
+                        </button>
+                        <button id="btnAbort" class="btn btn-danger-outline" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                            Abort
+                        </button>
+                    </div>
+
+                    <div class="transfer-progress">
+                        <div class="progress-track"><div class="progress-bar" id="pBar"></div></div>
+                        <div class="progress-meta"><span>Progress</span><span id="pText">0%</span></div>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="workspace">
+                <div class="console-panel">
+                    <div class="console-header">
+                        <h2>Session Log</h2>
+                        <span class="entry-count" id="entryCount">0 entries</span>
+                        <div class="console-tools">
+                            <div class="search-field">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.3-4.3"/></svg>
+                                <input type="text" id="logFilter" placeholder="Filter log…" aria-label="Filter log entries" />
+                            </div>
+                            <div class="segmented" id="typeFilter" role="group" aria-label="Filter by entry type">
+                                <button type="button" class="segmented-btn is-active" data-type="all" aria-pressed="true">All</button>
+                                <button type="button" class="segmented-btn" data-type="in" aria-pressed="false">In</button>
+                                <button type="button" class="segmented-btn" data-type="out" aria-pressed="false">Out</button>
+                                <button type="button" class="segmented-btn" data-type="sys" aria-pressed="false">Sys</button>
+                            </div>
+                            <button id="btnExport" class="btn btn-ghost btn-icon" title="Export log" aria-label="Export log" disabled>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M12 16l-4-4M12 16l4-4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                            </button>
+                            <button id="btnClear" class="btn btn-ghost btn-icon" title="Clear log" aria-label="Clear log">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M7 7l1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="console-scroll" id="console">
+                        <div class="empty-state" id="emptyState">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h3l2-7 4 14 3-10 2 5h4"/></svg>
+                            <strong>No signal yet</strong>
+                            <p>Establish a link to start monitoring GATT traffic.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="composer">
+                    <input type="text" id="cmdInput" placeholder="Command sequence…" aria-label="Command sequence" disabled />
+                    <select id="eolSel" title="Line ending appended to ASCII commands" aria-label="Line ending">
+                        <option value="none">No EOL</option>
+                        <option value="cr">CR</option>
+                        <option value="lf">LF</option>
+                        <option value="crlf">CR+LF</option>
+                    </select>
+                    <button id="btnSend" class="btn btn-primary" disabled>
+                        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M4 12 20 4 13 20l-2-7-7-1Z"/></svg>
+                        Transmit
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Quick command editor -->
+    <dialog id="qcDialog" aria-labelledby="qcDlgTitle">
+        <form id="qcForm" method="dialog" novalidate>
+            <div class="dlg-head"><h3 id="qcDlgTitle">Add command</h3></div>
+            <div class="dlg-body">
+                <div class="field">
+                    <label for="qcLabel">Button label</label>
+                    <input type="text" id="qcLabel" maxlength="24" placeholder="e.g. Get Status" autocomplete="off" />
+                </div>
+                <div class="field">
+                    <label for="qcPayload">Payload</label>
+                    <input type="text" id="qcPayload" placeholder="e.g. STATUS?" autocomplete="off" />
+                    <span class="field-hint" id="qcPayloadHint">ASCII — the line ending from the composer is appended.</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Format</span>
+                    <div class="segmented" id="qcFormat" role="group" aria-label="Payload format" style="align-self:flex-start">
+                        <button type="button" class="segmented-btn is-active" data-fmt="ascii" aria-pressed="true">ASCII</button>
+                        <button type="button" class="segmented-btn" data-fmt="hex" aria-pressed="false">HEX</button>
+                    </div>
+                </div>
+                <div class="dlg-error" id="qcError" role="alert"></div>
+            </div>
+            <div class="dlg-foot">
+                <button type="button" id="qcDelete" class="btn btn-danger-outline">Delete</button>
+                <span class="spacer"></span>
+                <button type="button" id="qcCancel" class="btn btn-ghost">Cancel</button>
+                <button type="submit" id="qcSave" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div class="toast-host" id="toastHost" aria-live="polite"></div>
+
+<script>
+    const $ = id => document.getElementById(id);
+    let device = null, characteristic = null, abort = false, uploading = false;
+    let activeType = 'all';
+
+    const MAX_LOG_ROWS = 5000;
+    const EOL = { none: '', cr: '\r', lf: '\n', crlf: '\r\n' };
+    const textEnc = new TextEncoder();
+    let rxDecoder = new TextDecoder();
+
+    /* ---------- Storage (safe wrappers) ---------- */
+    const store = {
+        get(key, fallback) {
+            try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
+            catch { return fallback; }
+        },
+        set(key, value) {
+            try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ }
+        }
+    };
+
+    /* ---------- Byte helpers ---------- */
+    function parseHex(s) {
+        const clean = s.replace(/0x/gi, '').replace(/[\s,:\-]/g, '');
+        if (!clean) throw new Error('Hex payload is empty');
+        if (/[^0-9a-f]/i.test(clean)) throw new Error('Hex payload has non-hex characters');
+        if (clean.length % 2) throw new Error('Hex payload needs whole bytes, e.g. "AA 01 FF"');
+        return Uint8Array.from(clean.match(/../g), h => parseInt(h, 16));
+    }
+    const toHex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+
+    /* ---------- Log ---------- */
+    function updateEmptyState() {
+        $('emptyState').style.display = $('console').querySelector('.log-row') ? 'none' : '';
+    }
+    function updateEntryCount() {
+        const n = $('console').querySelectorAll('.log-row').length;
+        $('entryCount').textContent = `${n} ${n === 1 ? 'entry' : 'entries'}`;
+        $('btnExport').disabled = n === 0;
+    }
+
+    function exportLog() {
+        const rows = $('console').querySelectorAll('.log-row');
+        if (!rows.length) return;
+
+        const lines = Array.from(rows).map(row => {
+            const time = row.querySelector('.log-time').textContent;
+            const badge = row.querySelector('.log-badge').textContent.padEnd(3);
+            const text = row.querySelector('.log-text').textContent;
+            return `[${time}] ${badge} ${text}`;
+        });
+
+        const fileBase = device && device.name
+            ? device.name.replace(/[\\/:*?"<>|]+/g, '_').trim()
+            : `ble-console-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+        downloadText(lines.join('\n') + '\n', `${fileBase || 'ble-console'}.log`, 'text/plain');
+        showToast('Log exported', 'success');
+    }
+
+    function downloadText(content, filename, type) {
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function rowMatches(row, q) {
+        const matchesType = activeType === 'all' || row.dataset.type === activeType;
+        const matchesText = !q || row.textContent.toLowerCase().includes(q);
+        return matchesType && matchesText;
+    }
+    function applyFilter() {
+        const q = $('logFilter').value.trim().toLowerCase();
+        $('console').querySelectorAll('.log-row').forEach(row => {
+            row.style.display = rowMatches(row, q) ? '' : 'none';
+        });
+    }
+
+    const log = (msg, type = 'sys') => {
+        const con = $('console');
+        const nearBottom = con.scrollHeight - con.scrollTop - con.clientHeight < 40;
+
+        const row = document.createElement('div');
+        row.className = 'log-row';
+        row.dataset.type = type;
+
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        const badge = document.createElement('span');
+        badge.className = `log-badge log-badge--${type}`;
+        badge.textContent = type === 'in' ? 'IN' : type === 'out' ? 'OUT' : 'SYS';
+
+        const text = document.createElement('span');
+        text.className = 'log-text';
+        text.textContent = msg;
+
+        row.append(time, badge, text);
+        // Filter only the new row instead of re-scanning the whole log
+        if (!rowMatches(row, $('logFilter').value.trim().toLowerCase())) row.style.display = 'none';
+        con.appendChild(row);
+
+        // Cap log size so long sessions don't bog down the page
+        const rows = con.querySelectorAll('.log-row');
+        for (let i = 0; i < rows.length - MAX_LOG_ROWS; i++) rows[i].remove();
+
+        // Only auto-scroll if the user hasn't scrolled up to read history
+        if (nearBottom) con.scrollTop = con.scrollHeight;
+
+        updateEmptyState();
+        updateEntryCount();
+    };
+
+    function clearLog() {
+        $('console').querySelectorAll('.log-row').forEach(el => el.remove());
+        updateEmptyState();
+        updateEntryCount();
+    }
+
+    $('logFilter').addEventListener('input', applyFilter);
+    $('typeFilter').querySelectorAll('.segmented-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeType = btn.dataset.type;
+            $('typeFilter').querySelectorAll('.segmented-btn').forEach(b => {
+                const active = b === btn;
+                b.classList.toggle('is-active', active);
+                b.setAttribute('aria-pressed', String(active));
+            });
+            applyFilter();
+        });
+    });
+
+    /* ---------- Toasts ---------- */
+    function showToast(message, kind = 'info') {
+        const el = document.createElement('div');
+        el.className = `toast toast--${kind}`;
+        el.setAttribute('role', 'status');
+
+        const text = document.createElement('span');
+        text.textContent = message;
+
+        const close = document.createElement('button');
+        close.className = 'toast-close';
+        close.setAttribute('aria-label', 'Dismiss notification');
+        close.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+        el.append(text, close);
+        $('toastHost').appendChild(el);
+
+        const dismiss = () => {
+            el.classList.remove('is-visible');
+            setTimeout(() => el.remove(), 200);
+        };
+        close.onclick = dismiss;
+
+        requestAnimationFrame(() => el.classList.add('is-visible'));
+        setTimeout(dismiss, 3600);
+    }
+
+    /* ---------- Connection state ---------- */
+    function setConnectionState(state) {
+        $('dot').className = `dot dot--${state}`;
+        $('statusLabel').textContent = state === 'online' ? 'ONLINE' : state === 'connecting' ? 'LINKING' : 'OFFLINE';
+        $('statusLabel').className = `status-label--${state}`;
+
+        $('btnConnect').classList.toggle('is-loading', state === 'connecting');
+        $('btnConnectLabel').textContent = state === 'connecting' ? 'Connecting…' : 'Establish Link';
+        $('btnConnect').disabled = state !== 'offline';
+
+        $('btnDisconnect').disabled = state !== 'online';
+        $('cmdInput').disabled = state !== 'online';
+        $('btnSend').disabled = state !== 'online';
+        syncUploadButton();
+        syncQuickCmdState();
+    }
+
+    /* ---------- File transfer UI ---------- */
+    function formatBytes(n) {
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / 1024 / 1024).toFixed(1)} MB`;
+    }
+    function syncUploadButton() {
+        $('btnUpload').disabled = uploading || !(characteristic && $('fileIn').files.length);
+        $('chunkSz').disabled = uploading;
+    }
+    function updateFileLabel() {
+        const f = $('fileIn').files[0];
+        $('fileName').textContent = f ? f.name : 'Drop a file or click to browse';
+        $('fileMeta').textContent = f ? formatBytes(f.size) : '';
+        syncUploadButton();
+    }
+
+    $('fileIn').addEventListener('change', updateFileLabel);
+    const dropzone = $('dropzone');
+    ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropzone.classList.add('is-dragover');
+    }));
+    ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropzone.classList.remove('is-dragover');
+    }));
+    dropzone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files && files.length) {
+            $('fileIn').files = files;
+            updateFileLabel();
+        }
+    });
+
+    /* ---------- BLE ---------- */
+    // All GATT writes go through one queue. Web Bluetooth rejects overlapping
+    // operations ("GATT operation already in progress"), which happened when a
+    // command was sent while a file upload was running.
+    let writeChain = Promise.resolve();
+    function bleWrite(bytes) {
+        const ch = characteristic;
+        const p = writeChain.then(() => {
+            if (!ch) throw new Error('Not connected');
+            // Prefer acknowledged writes; fall back to write-without-response
+            // for characteristics that only support that.
+            if (!ch.properties.write && ch.properties.writeWithoutResponse && ch.writeValueWithoutResponse) {
+                return ch.writeValueWithoutResponse(bytes);
+            }
+            return ch.writeValueWithResponse ? ch.writeValueWithResponse(bytes) : ch.writeValue(bytes);
+        });
+        writeChain = p.catch(() => {});
+        return p;
+    }
+
+    function onNotify(e) {
+        // stream:true keeps multi-byte UTF-8 chars intact across packet boundaries
+        log(rxDecoder.decode(e.target.value, { stream: true }), 'in');
+    }
+
+    function onDisconnected() {
+        abort = true;
+        characteristic = null;
+        writeChain = Promise.resolve();
+        setConnectionState('offline');
+        log('Interface link terminated', 'sys');
+        showToast('Device disconnected', 'info');
+    }
+
+    async function initBLE() {
+        if (!navigator.bluetooth) {
+            const reason = window.isSecureContext
+                ? 'Web Bluetooth is not available in this browser. Use Chrome or Edge on desktop/Android (Bluefy on iOS).'
+                : 'Web Bluetooth needs HTTPS. Open this page over https:// or localhost.';
+            log(reason, 'sys');
+            showToast(window.isSecureContext ? 'Use Chrome or Edge — this browser has no Web Bluetooth' : 'Page must be served over HTTPS', 'error');
+            return;
+        }
+
+        const sUUID = $('svc').value.trim().toLowerCase();
+        const cUUID = $('chr').value.trim().toLowerCase();
+        setConnectionState('connecting');
+
+        try {
+            log('Scanning for hardware…', 'sys');
+            device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [sUUID] });
+            // Same function reference → re-adding on reconnect does not duplicate the listener
+            device.addEventListener('gattserverdisconnected', onDisconnected);
+
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService(sUUID);
+            characteristic = await service.getCharacteristic(cUUID);
+
+            const props = characteristic.properties;
+            if (props.notify || props.indicate) {
+                rxDecoder = new TextDecoder();
+                characteristic.addEventListener('characteristicvaluechanged', onNotify);
+                await characteristic.startNotifications();
+            } else {
+                log('Characteristic has no notify/indicate — TX only, no incoming data', 'sys');
+            }
+            if (!props.write && !props.writeWithoutResponse) {
+                log('Characteristic is not writable — commands and uploads will fail', 'sys');
+            }
+
+            setConnectionState('online');
+            log(`System ready. Device: ${device.name || 'Unnamed device'}`, 'sys');
+            showToast(`Connected to ${device.name || 'device'}`, 'success');
+        } catch (e) {
+            if (e.name === 'NotFoundError' && /cancel/i.test(e.message)) {
+                // User closed the device chooser — not an error
+                log('Device selection cancelled', 'sys');
+            } else {
+                log(e.message, 'sys');
+                showToast(e.message, 'error');
+            }
+            characteristic = null;
+            if (device && device.gatt.connected) device.gatt.disconnect();
+            setConnectionState('offline');
+        }
+    }
+
+    // Shared send path for the composer and quick-command buttons
+    async function sendPayload(payload, format = 'ascii') {
+        if (!characteristic) return false;
+        let bytes;
+        try {
+            bytes = format === 'hex' ? parseHex(payload) : textEnc.encode(payload + EOL[$('eolSel').value]);
+        } catch (e) {
+            showToast(e.message, 'error');
+            return false;
+        }
+        try {
+            await bleWrite(bytes);
+            log(format === 'hex' ? `[HEX] ${toHex(bytes)}` : payload, 'out');
+            return true;
+        } catch (e) {
+            log('Write failed: ' + e.message, 'sys');
+            showToast('Send failed: ' + e.message, 'error');
+            return false;
+        }
+    }
+
+    async function sendMessage() {
+        const val = $('cmdInput').value;
+        if (!val) return;
+        if (await sendPayload(val, 'ascii')) $('cmdInput').value = '';
+    }
+
+    async function upload() {
+        const file = $('fileIn').files[0];
+        if (!file || !characteristic) return;
+        abort = false;
+        uploading = true;
+        let hadError = false;
+        syncUploadButton();
+        $('btnAbort').disabled = false;
+
+        try {
+            const data = new Uint8Array(await file.arrayBuffer());
+            // Web Bluetooth doesn't expose the negotiated MTU, so the user picks it.
+            // 20 bytes fits the default ATT MTU of 23; 512 is the max attribute value length.
+            const size = Math.max(1, Math.min(512, parseInt($('chunkSz').value, 10) || 20));
+            $('chunkSz').value = size;
+            store.set('bleconsole.chunk', size);
+            const total = Math.ceil(data.length / size);
+
+            log(`Initiating stream: ${file.name} (${formatBytes(data.length)}, ${total} chunks)`, 'sys');
+            for (let i = 0; i < total; i++) {
+                if (abort) break;
+                const chunk = data.slice(i * size, (i + 1) * size);
+                try {
+                    await bleWrite(chunk);
+                    const pct = Math.round(((i + 1) / total) * 100);
+                    $('pBar').style.width = `${pct}%`;
+                    $('pText').textContent = `${pct}%`;
+                    await new Promise(r => setTimeout(r, 50));
+                } catch (e) {
+                    log('Stream error: ' + e.message, 'sys');
+                    showToast('Transfer failed: ' + e.message, 'error');
+                    hadError = true;
+                    break;
+                }
+            }
+        } finally {
+            log(hadError ? 'Stream failed' : abort ? 'Stream aborted' : 'Stream sent', 'sys');
+            if (!hadError) showToast(abort ? 'Transfer aborted' : 'Transfer complete', abort ? 'warning' : 'success');
+
+            uploading = false;
+            $('btnAbort').disabled = true;
+            syncUploadButton();
+            setTimeout(() => { $('pBar').style.width = '0%'; $('pText').textContent = '0%'; }, 1000);
+        }
+    }
+
+    /* ---------- Quick commands ---------- */
+    const QC_KEY = 'bleconsole.quickcmds.v1';
+    const QC_DEFAULTS = [
+        { label: 'Status', payload: 'STATUS?', format: 'ascii' },
+        { label: 'Version', payload: 'VER?', format: 'ascii' },
+        { label: 'Reboot', payload: 'RESET', format: 'ascii' },
+        { label: 'Ping (hex)', payload: 'AA 55 01 00', format: 'hex' }
+    ];
+    let quickCmds = sanitizeCmds(store.get(QC_KEY, QC_DEFAULTS)) || QC_DEFAULTS.slice();
+    let qcEditing = false;
+    let qcEditIndex = -1;
+    let qcFormat = 'ascii';
+
+    function sanitizeCmds(list) {
+        if (!Array.isArray(list)) return null;
+        return list
+            .filter(c => c && typeof c.label === 'string' && typeof c.payload === 'string')
+            .map(c => ({
+                label: c.label.slice(0, 24),
+                payload: c.payload,
+                format: c.format === 'hex' ? 'hex' : 'ascii'
+            }));
+    }
+    const saveCmds = () => store.set(QC_KEY, quickCmds);
+
+    function renderQuickCmds() {
+        const grid = $('qcGrid');
+        grid.replaceChildren();
+        grid.classList.toggle('is-editing', qcEditing);
+
+        if (!quickCmds.length) {
+            const empty = document.createElement('div');
+            empty.className = 'qc-empty';
+            empty.textContent = 'No commands yet — click + to add one.';
+            grid.appendChild(empty);
+        }
+
+        quickCmds.forEach((cmd, i) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'qc-btn';
+            btn.dataset.index = i;
+            btn.title = qcEditing ? `Edit "${cmd.label}"` : `Send: ${cmd.payload}`;
+
+            const label = document.createElement('span');
+            label.className = 'qc-label';
+            label.textContent = cmd.label;
+
+            const payload = document.createElement('span');
+            payload.className = 'qc-payload';
+            if (cmd.format === 'hex') {
+                const fmt = document.createElement('span');
+                fmt.className = 'qc-fmt';
+                fmt.textContent = 'HEX';
+                payload.appendChild(fmt);
+            }
+            payload.append(cmd.payload);
+
+            btn.append(label, payload);
+
+            if (i < 9) {
+                const key = document.createElement('span');
+                key.className = 'qc-key';
+                key.textContent = `⌥${i + 1}`;
+                btn.appendChild(key);
+            }
+
+            btn.addEventListener('click', () => qcEditing ? openQcEditor(i) : fireQuickCmd(i));
+            grid.appendChild(btn);
+        });
+
+        syncQuickCmdState();
+    }
+
+    function syncQuickCmdState() {
+        $('qcGrid').querySelectorAll('.qc-btn').forEach(b => {
+            b.disabled = !qcEditing && !characteristic;
+        });
+        $('btnQcExport').disabled = !quickCmds.length;
+    }
+
+    async function fireQuickCmd(i) {
+        const cmd = quickCmds[i];
+        if (!cmd || !characteristic) return;
+        const btn = $('qcGrid').querySelector(`.qc-btn[data-index="${i}"]`);
+        const ok = await sendPayload(cmd.payload, cmd.format);
+        if (ok && btn) {
+            btn.classList.add('is-sent');
+            setTimeout(() => btn.classList.remove('is-sent'), 350);
+        }
+    }
+
+    function setQcFormat(fmt) {
+        qcFormat = fmt;
+        $('qcFormat').querySelectorAll('.segmented-btn').forEach(b => {
+            const active = b.dataset.fmt === fmt;
+            b.classList.toggle('is-active', active);
+            b.setAttribute('aria-pressed', String(active));
+        });
+        $('qcPayload').placeholder = fmt === 'hex' ? 'e.g. AA 55 01 00' : 'e.g. STATUS?';
+        $('qcPayloadHint').textContent = fmt === 'hex'
+            ? 'HEX — sent as raw bytes, no line ending. Spaces, commas and 0x are ignored.'
+            : 'ASCII — the line ending from the composer is appended.';
+    }
+
+    function openQcEditor(index = -1) {
+        qcEditIndex = index;
+        const cmd = index >= 0 ? quickCmds[index] : { label: '', payload: '', format: 'ascii' };
+        $('qcDlgTitle').textContent = index >= 0 ? 'Edit command' : 'Add command';
+        $('qcLabel').value = cmd.label;
+        $('qcPayload').value = cmd.payload;
+        $('qcError').textContent = '';
+        $('qcDelete').style.display = index >= 0 ? '' : 'none';
+        setQcFormat(cmd.format);
+        $('qcDialog').showModal();
+        $('qcLabel').focus();
+    }
+
+    function saveQcEditor(e) {
+        e.preventDefault();
+        const label = $('qcLabel').value.trim();
+        const payload = $('qcPayload').value;
+        if (!label) { $('qcError').textContent = 'Give the button a label.'; return; }
+        if (!payload.trim()) { $('qcError').textContent = 'Payload cannot be empty.'; return; }
+        if (qcFormat === 'hex') {
+            try { parseHex(payload); } catch (err) { $('qcError').textContent = err.message; return; }
+        }
+        const cmd = { label, payload, format: qcFormat };
+        if (qcEditIndex >= 0) quickCmds[qcEditIndex] = cmd; else quickCmds.push(cmd);
+        saveCmds();
+        renderQuickCmds();
+        $('qcDialog').close();
+    }
+
+    function deleteQcCmd() {
+        if (qcEditIndex < 0) return;
+        const removed = quickCmds.splice(qcEditIndex, 1)[0];
+        saveCmds();
+        renderQuickCmds();
+        $('qcDialog').close();
+        showToast(`Removed "${removed.label}"`, 'info');
+    }
+
+    function toggleQcEdit() {
+        qcEditing = !qcEditing;
+        $('btnQcEdit').textContent = qcEditing ? 'Done' : 'Edit';
+        $('btnQcEdit').classList.toggle('is-active', qcEditing);
+        $('btnQcEdit').setAttribute('aria-pressed', String(qcEditing));
+        $('qcHint').textContent = qcEditing
+            ? 'Click a command to edit or delete it.'
+            : 'Alt + 1…9 sends the first nine commands.';
+        renderQuickCmds();
+    }
+
+    function exportQuickCmds() {
+        downloadText(JSON.stringify(quickCmds, null, 2) + '\n', 'ble-quick-commands.json', 'application/json');
+        showToast('Commands exported', 'success');
+    }
+
+    async function importQuickCmds(file) {
+        try {
+            const list = sanitizeCmds(JSON.parse(await file.text()));
+            if (!list || !list.length) throw new Error('No valid commands in file');
+            quickCmds = list;
+            saveCmds();
+            renderQuickCmds();
+            showToast(`Imported ${list.length} command${list.length === 1 ? '' : 's'}`, 'success');
+        } catch (e) {
+            showToast('Import failed: ' + e.message, 'error');
+        }
+    }
+
+    $('btnQcAdd').onclick = () => openQcEditor(-1);
+    $('btnQcEdit').onclick = toggleQcEdit;
+    $('btnQcExport').onclick = exportQuickCmds;
+    $('btnQcImport').onclick = () => $('qcImportIn').click();
+    $('qcImportIn').addEventListener('change', e => {
+        const f = e.target.files[0];
+        if (f) importQuickCmds(f);
+        e.target.value = '';
+    });
+    $('qcForm').addEventListener('submit', saveQcEditor);
+    $('qcCancel').onclick = () => $('qcDialog').close();
+    $('qcDelete').onclick = deleteQcCmd;
+    $('qcFormat').querySelectorAll('.segmented-btn').forEach(b => {
+        b.addEventListener('click', () => setQcFormat(b.dataset.fmt));
+    });
+
+    // Alt + 1…9 fires quick commands (e.code so it works on macOS Option too)
+    document.addEventListener('keydown', e => {
+        if (!e.altKey || e.ctrlKey || e.metaKey || $('qcDialog').open) return;
+        const m = /^Digit([1-9])$/.exec(e.code);
+        if (!m) return;
+        e.preventDefault();
+        fireQuickCmd(Number(m[1]) - 1);
+    });
+
+    /* ---------- Line ending preference ---------- */
+    $('eolSel').value = store.get('bleconsole.eol', 'crlf');
+    if (!EOL.hasOwnProperty($('eolSel').value)) $('eolSel').value = 'crlf';
+    $('eolSel').addEventListener('change', () => store.set('bleconsole.eol', $('eolSel').value));
+
+    /* ---------- Chunk size preference ---------- */
+    {
+        const saved = parseInt(store.get('bleconsole.chunk', 20), 10);
+        $('chunkSz').value = saved >= 1 && saved <= 512 ? saved : 20;
+    }
+
+    /* ---------- Wiring ---------- */
+    $('btnConnect').onclick = initBLE;
+    $('btnDisconnect').onclick = () => device && device.gatt.disconnect();
+    $('btnSend').onclick = sendMessage;
+    $('btnUpload').onclick = upload;
+    $('btnAbort').onclick = () => abort = true;
+    $('btnClear').onclick = clearLog;
+    $('btnExport').onclick = exportLog;
+    $('cmdInput').onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); };
+
+    renderQuickCmds();
+    setConnectionState('offline');
+</script>
+</body>
+</html>
