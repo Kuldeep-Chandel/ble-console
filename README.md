@@ -2,7 +2,7 @@
 
 A browser-based BLE GATT terminal. Connect to an ESP32 (or any BLE device), send ASCII/HEX commands, watch notifications live, and stream files over GATT — no app, no install, no drivers.
 
-**Live:** https://&lt;username&gt;.github.io/ble-console/
+**Live:** https://&lt;Kuldeep-Chandel&gt;.github.io/ble-console/
 
 ![BLE Console demo](demo.gif)
 
